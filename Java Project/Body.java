@@ -28,4 +28,14 @@ public class Body {
     Color colour(){
         return Color.LIGHT_GRAY;
     }
+
+    //Whether the simulation writes this body's name next to it
+    boolean showLabel(){
+        return true;
+    }
+
+    //An optional glowing ring drawn around the body. Most bodies have none.
+    Color halo(){
+        return null;
+    }
 }

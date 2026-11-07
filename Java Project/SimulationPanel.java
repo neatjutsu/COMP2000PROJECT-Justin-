@@ -1,3 +1,4 @@
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
@@ -168,6 +169,7 @@ public class SimulationPanel extends JPanel {
                         throw new CollisionException(body.name + " was consumed by " + source.name);
                     } catch (CollisionException ex) {
                         System.out.println(ex.getMessage());
+                        absorb(source, body);
                         it.remove();
                         trails.remove(body);
                         listeners.forEach(l -> l.onBodyConsumed(body, source));
@@ -176,6 +178,16 @@ public class SimulationPanel extends JPanel {
                 }
             }
         }
+    }
+
+    //The black hole takes on the consumed body's mass and momentum, so it
+    //grows as it feeds and conserves momentum like a real inelastic collision.
+    private void absorb(Body blackHole, Body eaten){
+        double total = blackHole.mass + eaten.mass;
+        blackHole.v = new Velocity(
+                (blackHole.mass * blackHole.v.vx + eaten.mass * eaten.v.vx) / total,
+                (blackHole.mass * blackHole.v.vy + eaten.mass * eaten.v.vy) / total);
+        blackHole.mass = total;
     }
 
     private void recordTrails(){
@@ -199,7 +211,8 @@ public class SimulationPanel extends JPanel {
 
         //Trails first, so the bodies are drawn on top. Older points are fainter.
         for (Map.Entry<Body, Deque<double[]>> entry : trails.entrySet()){
-            Color c = entry.getKey().colour();
+            Color halo = entry.getKey().halo();
+            Color c = (halo != null) ? halo : entry.getKey().colour();
             double[][] points = entry.getValue().toArray(new double[0][]);
             for (int k = 1; k < points.length; k++){
                 int alpha = 20 + (int) (140.0 * k / points.length);
@@ -218,7 +231,21 @@ public class SimulationPanel extends JPanel {
 
             g2.setColor(body.colour());
             g2.fillOval(x-r,y-r,r*2,r*2);
-            g2.drawString(body.name,x+r+4,y-r-4);
+
+            Color halo = body.halo();
+            if (halo != null){
+                int hr = Math.max(r + 4, 9);
+                g2.setColor(halo);
+                g2.setStroke(new BasicStroke(2f));
+                g2.drawOval(x-hr,y-hr,hr*2,hr*2);
+                g2.setStroke(new BasicStroke(1f));
+            }
+
+            //Labels are always light, because a black hole's own colour is black
+            if (body.showLabel()){
+                g2.setColor(Color.LIGHT_GRAY);
+                g2.drawString(body.name,x+Math.max(r,halo != null ? 9 : 0)+4,y-r-4);
+            }
         }
     }
 }
